@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
+import 'package:pixel_peep/components/collision_block.dart';
+import 'package:pixel_peep/components/utils.dart';
 import 'package:pixel_peep/pixel_peep.dart';
 
 enum PlayerState{idle, running}
@@ -19,9 +21,11 @@ class Player extends SpriteAnimationGroupComponent with HasGameRef<PixelPeep>, K
   double horizontalMovement=0;
   double moveSpeed=100;
   Vector2 velocity= Vector2.zero();
+  List<CollisionBlock> collisionBlocks =[];
   @override
   FutureOr<void> onLoad() {
     _loadAllAnimation();
+    debugMode=true;
     return super.onLoad();
   }
 
@@ -29,6 +33,7 @@ class Player extends SpriteAnimationGroupComponent with HasGameRef<PixelPeep>, K
   void update(double dt){
     _updatePlayerState();
     _updatePlayerMovement(dt);
+    _checkHorizontalCollisions();
     super.update(dt);
   }
 
@@ -103,5 +108,22 @@ class Player extends SpriteAnimationGroupComponent with HasGameRef<PixelPeep>, K
 
     if(velocity.x>0||velocity.x<0){playerState=PlayerState.running;}
     current=playerState;
+  }
+
+  void _checkHorizontalCollisions() {
+    for(final block in collisionBlocks){
+      if(!block.isPlatform){
+        if(checkCollisions(this, block)){
+          if(velocity.x>0){
+            velocity.x=0;
+            position.x=block.x-width;
+          }
+          if(velocity.x>0){
+            velocity.x=0;
+            position.x=block.x + block.width +width;
+          }
+        }
+      }
+    }
   }
 }

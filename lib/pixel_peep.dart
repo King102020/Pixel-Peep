@@ -23,7 +23,7 @@ class PixelPeep extends FlameGame with HasKeyboardHandlerComponents, DragCallbac
     await images.loadAllImages();
     await images.load('HUD/Joystick.png');
 
-    final world=Level(levelName: 'level-02', player: player );
+    final world=Level(levelName: 'level-01', player: player );
 
     cam= CameraComponent.withFixedResolution(world:world, width: 640,height: 360);
     cam.viewfinder.anchor=Anchor.topLeft;
