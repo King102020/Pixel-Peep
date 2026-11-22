@@ -33,7 +33,7 @@ OBJECTS = {
     "s": ("Saw", 32, 32), "T": ("Trampoline", 28, 28), "W": ("Fan", 24, 8),
     "_": ("FallingPlatform", 32, 10), "f": ("Fire", 16, 32), "X": ("Box", 28, 24),
     "g": ("Slime", 32, 32), "b": ("Bat", 32, 32), "G": ("Golem", 32, 32),
-    "B": ("Boss", 64, 64),
+    "B": ("Boss", 48, 48),
 }
 FRUITS = ["Apple", "Bananas", "Cherries", "Kiwi", "Melon", "Orange", "Pineapple", "Strawberry"]
 
