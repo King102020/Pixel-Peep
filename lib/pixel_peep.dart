@@ -15,6 +15,8 @@ import 'package:pixel_peep/data/characters.dart';
 import 'package:pixel_peep/data/levels.dart';
 import 'package:pixel_peep/game/game_session.dart';
 import 'package:pixel_peep/services/audio_service.dart';
+import 'package:pixel_peep/services/save_repository.dart';
+import 'package:pixel_peep/ui/overlays.dart';
 
 class PixelPeep extends FlameGame
     with HasKeyboardHandlerComponents, DragCallbacks, HasCollisionDetection {
@@ -27,10 +29,16 @@ class PixelPeep extends FlameGame
   @override
   Color backgroundColor() => const Color(0xFF211F30);
 
+  PixelPeep({required this.save});
+
+  final SaveRepository save;
   final session = GameSession();
   late CameraComponent cam;
   late Level level;
   late Player player;
+
+  /// False while menus are showing and no level is loaded.
+  bool inLevel = false;
   int levelIndex = 0;
   HeroId hero = HeroId.blueNinja;
 
@@ -47,15 +55,17 @@ class PixelPeep extends FlameGame
   FutureOr<void> onLoad() async {
     await images.loadAllImages();
     await AudioService.instance.preload();
-    await loadLevel(0);
+    showMainMenu();
     return super.onLoad();
   }
 
   @override
   void update(double dt) {
-    if (joyStick != null) _updateJoystick();
-    if (!player.reachedEnd) session.elapsed.value += dt;
-    _updateShake(dt);
+    if (inLevel) {
+      if (joyStick != null) _updateJoystick();
+      if (!player.reachedEnd && !player.isDead) session.elapsed.value += dt;
+      _updateShake(dt);
+    }
     super.update(dt);
   }
 
@@ -75,9 +85,78 @@ class PixelPeep extends FlameGame
     cam.viewfinder.transform.offset = offset;
   }
 
+  // ---------------------------------------------------------------- flow
+
+  void _showOnly(String overlay) {
+    overlays
+      ..clear()
+      ..add(overlay);
+  }
+
+  void showMainMenu() {
+    _unloadLevel();
+    _showOnly(Overlays.mainMenu);
+    AudioService.instance.playMusic(Music.menu);
+  }
+
+  void showLevelSelect() => _showOnly(Overlays.levelSelect);
+
+  void showCharacterSelect(int index) {
+    levelIndex = index;
+    _showOnly(Overlays.characterSelect);
+  }
+
+  Future<void> startLevel(HeroId chosen) async {
+    hero = chosen;
+    _showOnly(Overlays.hud);
+    await loadLevel(levelIndex);
+    AudioService.instance.playMusic(Music.level);
+  }
+
+  void togglePause() {
+    if (!inLevel || player.reachedEnd) return;
+    if (paused) {
+      overlays.remove(Overlays.pause);
+      resumeEngine();
+    } else {
+      overlays.add(Overlays.pause);
+      pauseEngine();
+    }
+  }
+
+  void restartLevel() {
+    if (paused) resumeEngine();
+    _showOnly(Overlays.hud);
+    loadLevel(levelIndex);
+  }
+
+  void quitToMenu() {
+    if (paused) resumeEngine();
+    showMainMenu();
+  }
+
+  bool get hasNextLevel => levelIndex + 1 < levels.length;
+
+  void playNextLevel() => showCharacterSelect(levelIndex + 1);
+
+  /// Called by the player once the finish animation is done.
+  Future<void> completeLevel() async {
+    lastResult = LevelResult(stars: session.stars, seconds: session.elapsed.value);
+    await save.recordResult(levelIndex, lastResult!);
+    _showOnly(Overlays.levelComplete);
+  }
+
+  LevelResult? lastResult;
+
+  void _unloadLevel() {
+    inLevel = false;
+    joyStick = null;
+    removeWhere((c) => c is Level || c is CameraComponent);
+  }
+
   Future<void> loadLevel(int index) async {
     levelIndex = index;
-    removeWhere((c) => c is Level || c is CameraComponent);
+    _unloadLevel();
     player = Player(hero: hero);
     level = Level(levelName: levels[index].file, player: player);
     cam = CameraComponent.withFixedResolution(
@@ -89,6 +168,7 @@ class PixelPeep extends FlameGame
     await level.loaded;
     _setupCamera();
     if (showTouchControls) _addTouchControls();
+    inLevel = true;
   }
 
   void _setupCamera() {
@@ -102,14 +182,6 @@ class PixelPeep extends FlameGame
       math.max(halfH, size.y - halfH),
     ));
   }
-
-  /// Called by the player once the finish animation is done.
-  void completeLevel() {
-    final next = levelIndex + 1;
-    loadLevel(next < levels.length ? next : 0);
-  }
-
-  void restartLevel() => loadLevel(levelIndex);
 
   void _addTouchControls() {
     cam.viewport.removeWhere((c) => c is JoystickComponent || c is ActionButton);
