@@ -6,6 +6,11 @@ class GameSession {
   final totalFruits = ValueNotifier<int>(0);
   final elapsed = ValueNotifier<double>(0);
   final deaths = ValueNotifier<int>(0);
+  final hp = ValueNotifier<int>(3);
+  final maxHp = ValueNotifier<int>(3);
+
+  /// 0 = ability ready, 1 = just used.
+  final abilityCooldown = ValueNotifier<double>(0);
 
   /// Target time in seconds for the time star; read from the level file.
   double targetTime = 60;
