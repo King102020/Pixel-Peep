@@ -6,9 +6,14 @@ set -euo pipefail
 FLUTTER_VERSION="3.35.3"   # keep in sync with local `flutter --version`
 SDK_DIR="${VERCEL_CACHE_DIR:-$HOME}/flutter-$FLUTTER_VERSION"
 
-# Flutter's bootstrap unzips the Dart SDK; Vercel's image may not have unzip.
-if ! command -v unzip >/dev/null 2>&1; then
-  dnf install -y unzip >/dev/null 2>&1 || yum install -y unzip >/dev/null 2>&1 || true
+# Flutter's bootstrap needs these; Vercel's image (Amazon Linux 2023) may not.
+missing=()
+for tool in unzip find which xz tar curl; do
+  command -v "$tool" >/dev/null 2>&1 || missing+=("$tool")
+done
+if [ ${#missing[@]} -gt 0 ]; then
+  echo "Installing build tools: ${missing[*]}"
+  dnf install -y -q unzip findutils which xz tar curl-minimal
 fi
 
 if [ ! -x "$SDK_DIR/bin/flutter" ]; then
