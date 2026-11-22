@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:pixel_peep/components/actors/player.dart';
+import 'package:pixel_peep/components/effects/confetti.dart';
 import 'package:pixel_peep/pixel_peep.dart';
 import 'package:pixel_peep/services/audio_service.dart';
 
@@ -88,6 +89,7 @@ class EndFlag extends SpriteAnimationComponent
           loop: false,
         ),
       );
+      parent?.add(Confetti(position: position + Vector2(32, 24)));
       other.reachEnd();
     }
     super.onCollisionStart(intersectionPoints, other);

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:pixel_peep/data/levels.dart';
+import 'package:pixel_peep/game/game_session.dart';
 import 'package:pixel_peep/pixel_peep.dart';
 import 'package:pixel_peep/ui/widgets.dart';
 
@@ -10,6 +12,19 @@ class Hud extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = game.session;
+    return Stack(
+      children: [
+        _LevelBanner(
+          key: ValueKey(game.levelIndex),
+          title: 'LEVEL ${game.levelIndex + 1}',
+          subtitle: levels[game.levelIndex].name,
+        ),
+        _bar(s),
+      ],
+    );
+  }
+
+  Widget _bar(GameSession s) {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(10),
@@ -109,5 +124,58 @@ class _Chip extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
         ),
         child: child,
+      );
+}
+
+
+/// Shows the level name for a moment when the level starts.
+class _LevelBanner extends StatefulWidget {
+  const _LevelBanner({super.key, required this.title, required this.subtitle});
+  final String title;
+  final String subtitle;
+
+  @override
+  State<_LevelBanner> createState() => _LevelBannerState();
+}
+
+class _LevelBannerState extends State<_LevelBanner>
+    with SingleTickerProviderStateMixin {
+  late final _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2400),
+  )..forward();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (_, child) {
+            final t = _controller.value;
+            // Fade in, hold, fade out.
+            final opacity =
+                t < 0.15 ? t / 0.15 : (t > 0.75 ? (1 - t) / 0.25 : 1.0);
+            return Opacity(
+              opacity: opacity.clamp(0, 1),
+              child: Transform.scale(scale: 0.9 + 0.1 * opacity, child: child),
+            );
+          },
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(widget.title,
+                    style: pixelText.copyWith(fontSize: 18, color: Palette.muted)),
+                Text(widget.subtitle.toUpperCase(),
+                    style: pixelText.copyWith(fontSize: 34, color: Palette.accent)),
+              ],
+            ),
+          ),
+        ),
       );
 }
