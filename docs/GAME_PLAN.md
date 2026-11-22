@@ -121,18 +121,19 @@ test/ unit tests for physics helpers, stats, save repo; widget tests for overlay
 
 ## 7. Milestones
 
-| # | Milestone | Done when |
-|---|---|---|
-| M1 | **Core movement:** fix the bugs above, add gravity, jumping, vertical collisions and coyote time/buffering | Level 1 is fully playable with Ninja Frog |
-| M2 | **Level objects:** fruit, checkpoints, end flag, saws, spikes, death and respawn, camera following the player, level loading from a list | Level 1 → Level 2 transition works |
-| M3 | **Four heroes:** `CharacterStats`, the `Ability` system, the four abilities | Each hero feels clearly different |
-| M4 | **UI:** main menu, level select, character select, HUD, pause, level complete; saving progress | Full loop from menu to next level |
-| M5 | **Content:** build levels 1–8 in Tiled, with one secret route per hero | Worlds 1–3 playable |
-| M6 | **Enemies and more traps:** enemies, fans, trampolines, falling platforms, Rock Heads | Worlds 4–5 |
-| M7 | **Juice and audio:** particles, screen shake, music and sound effects | Feels polished |
-| M8 | **Boss, balancing, tests, release builds** (Android/iOS/Web/Windows) | v1.0 |
+All milestones are implemented. Each one is a separate pull request, stacked on the previous one.
 
----
+| # | Milestone | Status |
+|---|---|---|
+| M1 | Core movement: gravity, jumping, collisions, coyote time, jump buffering | ✅ |
+| M2 | Level objects: fruit, checkpoints, finish, saws, spikes, respawn, camera | ✅ |
+| M3 | Four heroes: `CharacterStats` plus the four abilities | ✅ |
+| M4 | UI: menus, level select, character select, HUD, pause, saved progress | ✅ |
+| M5 | Content: 16 levels with hero-specific secrets | ✅ |
+| M6 | Enemies and traps: slime, bat, golem, boss, fans, trampolines, falling platforms, fire, crates | ✅ |
+| M7 | Polish: dust, screen shake, hit-stop, confetti, level banner, music | ✅ |
+
+**Next ideas:** hand-drawn art pass on the levels in Tiled, achievements, more bosses, and online leaderboards (the `SaveRepository` interface is ready for this).
 
 ## 8. Assets & decisions (resolved)
 
