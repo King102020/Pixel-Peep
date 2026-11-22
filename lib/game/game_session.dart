@@ -12,6 +12,9 @@ class GameSession {
   /// 0 = ability ready, 1 = just used.
   final abilityCooldown = ValueNotifier<double>(0);
 
+  /// False until the player first moves; the clock waits for it.
+  bool started = false;
+
   /// Target time in seconds for the time star; read from the level file.
   double targetTime = 60;
 
@@ -20,6 +23,7 @@ class GameSession {
     totalFruits.value = fruitCount;
     elapsed.value = 0;
     deaths.value = 0;
+    started = false;
     targetTime = target;
   }
 

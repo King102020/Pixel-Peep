@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
@@ -213,15 +215,40 @@ class Box extends CollisionBlock with HasGameReference<PixelPeep> {
         stepTime: 1,
       ),
       size: size,
+      anchor: Anchor.bottomCenter,
+      position: Vector2(size.x / 2, size.y),
     );
     add(_sprite);
+    if (loot != null) {
+      _twinkle = CircleComponent(
+        radius: 2,
+        position: Vector2(size.x - 6, 4),
+        anchor: Anchor.center,
+        paint: Paint()..color = const Color(0xFFFFE066),
+      );
+      add(_twinkle!);
+    }
     return super.onLoad();
   }
+
+  CircleComponent? _twinkle;
+  double _t = 0;
 
   @override
   void update(double dt) {
     if (!_broken && game.player.isAttacking && _playerTouching()) smash();
+    if (!_broken && loot != null) _hint(dt);
     super.update(dt);
+  }
+
+  /// Crates with fruit inside wobble every few seconds and twinkle, so the
+  /// level admits there's something to find.
+  void _hint(double dt) {
+    _t += dt;
+    final phase = _t % 2.4;
+    _sprite.angle = phase < 0.4 ? math.sin(phase * 40) * 0.08 : 0;
+    final pulse = (math.sin(_t * 5) + 1) / 2;
+    _twinkle?.paint.color = Color.fromRGBO(255, 224, 102, 0.3 + 0.7 * pulse);
   }
 
   bool _playerTouching() {
@@ -240,6 +267,8 @@ class Box extends CollisionBlock with HasGameReference<PixelPeep> {
     game.level.collisionBlocks.remove(this);
     game.shake(intensity: 2);
     AudioService.instance.playSfx(Sfx.enemyDefeat);
+    _twinkle?.removeFromParent();
+    _sprite.angle = 0;
     if (loot != null) {
       parent?.add(Fruit(fruit: loot!, position: position + Vector2(-2, -6)));
     }

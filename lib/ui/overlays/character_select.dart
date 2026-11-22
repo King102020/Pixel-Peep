@@ -19,7 +19,8 @@ class CharacterSelect extends StatefulWidget {
 }
 
 class _CharacterSelectState extends State<CharacterSelect> {
-  late HeroId _selected = levels[widget.game.levelIndex].bestHero ?? widget.game.hero;
+  late HeroId _selected =
+      levels[widget.game.levelIndex].bestHero ?? widget.game.hero;
   late final Future<LevelGoals> _goals =
       LevelGoals.load(levels[widget.game.levelIndex].file);
 
@@ -37,14 +38,17 @@ class _CharacterSelectState extends State<CharacterSelect> {
       child: SafeArea(
         child: LayoutBuilder(builder: (context, box) {
           // Short landscape: details left, goals + buttons right.
-          final twoColumn = box.maxWidth >= 600 && box.maxHeight < 560;
+          final twoColumn = box.maxWidth >= 520 && box.maxHeight < 560;
           final header = _Header(game: game, info: info, goals: _goals);
           final picker = Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               _HeroTiles(game: game, selected: _selected, onPick: _pick),
               const SizedBox(height: 10),
-              _HeroDetail(game: game, hero: _selected, shines: info.bestHero == _selected),
+              _HeroDetail(
+                  game: game,
+                  hero: _selected,
+                  shines: info.bestHero == _selected),
             ],
           );
           final buttons = Wrap(
@@ -75,10 +79,11 @@ class _CharacterSelectState extends State<CharacterSelect> {
                   Expanded(child: ScrollHint(child: picker)),
                   const SizedBox(width: 12),
                   SizedBox(
-                    width: 230,
+                    width: box.maxWidth < 700 ? 200 : 230,
                     child: ScrollHint(
                       child: Column(
-                        children: [header, const SizedBox(height: 14), buttons],
+                        // Buttons first so GO is never below the fold.
+                        children: [buttons, const SizedBox(height: 12), header],
                       ),
                     ),
                   ),
@@ -87,20 +92,24 @@ class _CharacterSelectState extends State<CharacterSelect> {
             );
           }
           return ScrollHint(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 560),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      header,
-                      const SizedBox(height: 12),
-                      picker,
-                      const SizedBox(height: 14),
-                      buttons,
-                    ],
+            child: ConstrainedBox(
+              // Fill the height so short content centres on tall screens.
+              constraints: BoxConstraints(minHeight: box.maxHeight),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        header,
+                        const SizedBox(height: 12),
+                        picker,
+                        const SizedBox(height: 14),
+                        buttons,
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -147,14 +156,17 @@ class _Header extends StatelessWidget {
                     text: g == null ? 'All fruit' : 'All ${g.fruit} fruit'),
                 _Goal(
                     icon: Icons.timer_rounded,
-                    text: g == null ? 'Beat the clock' : 'Under ${formatTime(g.targetSeconds)}'),
+                    text: g == null
+                        ? 'Beat the clock'
+                        : 'Under ${formatTime(g.targetSeconds)}'),
               ],
             );
           },
         ),
         if (best != null) ...[
           const SizedBox(height: 4),
-          Text('Your best: ${formatTime(best)}  ·  ${game.save.starsFor(game.levelIndex)}★',
+          Text(
+              'Your best: ${formatTime(best)}  ·  ${game.save.starsFor(game.levelIndex)}★',
               style: pixelText.copyWith(fontSize: 11, color: Palette.muted)),
         ],
         if (tip != null) ...[
@@ -162,7 +174,9 @@ class _Header extends StatelessWidget {
           Text(tip,
               textAlign: TextAlign.center,
               style: pixelText.copyWith(
-                  fontSize: 12, color: Palette.text, fontWeight: FontWeight.w600)),
+                  fontSize: 12,
+                  color: Palette.text,
+                  fontWeight: FontWeight.w600)),
         ],
       ],
     );
@@ -185,7 +199,8 @@ class _Goal extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.star_outline_rounded, color: Palette.accent, size: 14),
+            const Icon(Icons.star_outline_rounded,
+                color: Palette.accent, size: 14),
             const SizedBox(width: 3),
             Icon(icon, color: Palette.muted, size: 14),
             const SizedBox(width: 4),
@@ -196,7 +211,8 @@ class _Goal extends StatelessWidget {
 }
 
 class _HeroTiles extends StatelessWidget {
-  const _HeroTiles({required this.game, required this.selected, required this.onPick});
+  const _HeroTiles(
+      {required this.game, required this.selected, required this.onPick});
   final PixelPeep game;
   final HeroId selected;
   final ValueChanged<HeroId> onPick;
@@ -226,7 +242,8 @@ class _HeroTiles extends StatelessWidget {
                   children: [
                     SizedBox.square(
                       dimension: 40,
-                      child: _HeroSprite(game: game, hero: hero, state: 'Idle', frames: 11),
+                      child: _HeroSprite(
+                          game: game, hero: hero, state: 'Idle', frames: 11),
                     ),
                     Text(
                       hero.displayName,
@@ -244,7 +261,8 @@ class _HeroTiles extends StatelessWidget {
 }
 
 class _HeroDetail extends StatelessWidget {
-  const _HeroDetail({required this.game, required this.hero, required this.shines});
+  const _HeroDetail(
+      {required this.game, required this.hero, required this.shines});
   final PixelPeep game;
   final HeroId hero;
   final bool shines;
@@ -278,19 +296,23 @@ class _HeroDetail extends StatelessWidget {
               children: [
                 SizedBox.square(
                   dimension: 64,
-                  child: _HeroSprite(game: game, hero: hero, state: 'Run', frames: 12),
+                  child: _HeroSprite(
+                      game: game, hero: hero, state: 'Run', frames: 12),
                 ),
                 if (shines)
                   Container(
                     margin: const EdgeInsets.only(top: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: hero.color,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text('SHINES HERE',
                         style: pixelText.copyWith(
-                            fontSize: 9, color: Palette.background, shadows: [])),
+                            fontSize: 9,
+                            color: Palette.background,
+                            shadows: [])),
                   ),
               ],
             ),
@@ -301,13 +323,17 @@ class _HeroDetail extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text('${hero.displayName} · ${hero.role}',
-                      style: pixelText.copyWith(fontSize: 15, color: hero.color)),
+                      style:
+                          pixelText.copyWith(fontSize: 15, color: hero.color)),
                   const SizedBox(height: 2),
                   Text('★ ${hero.ability}',
-                      style: pixelText.copyWith(fontSize: 12, color: Palette.accent)),
+                      style: pixelText.copyWith(
+                          fontSize: 12, color: Palette.accent)),
                   Text(hero.description,
                       style: pixelText.copyWith(
-                          fontSize: 12, fontWeight: FontWeight.w600, shadows: [])),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          shadows: [])),
                   const SizedBox(height: 6),
                   _StatBar(
                       label: 'SPEED',
@@ -320,7 +346,8 @@ class _HeroDetail extends StatelessWidget {
                       color: hero.color),
                   _StatBar(
                       label: 'HEARTS',
-                      value: _norm(s.maxHp.toDouble(), all.map((e) => e.maxHp.toDouble())),
+                      value: _norm(s.maxHp.toDouble(),
+                          all.map((e) => e.maxHp.toDouble())),
                       color: hero.color),
                 ],
               ),
@@ -358,7 +385,8 @@ class _HeroSprite extends StatelessWidget {
 }
 
 class _StatBar extends StatelessWidget {
-  const _StatBar({required this.label, required this.value, required this.color});
+  const _StatBar(
+      {required this.label, required this.value, required this.color});
   final String label;
   final double value;
   final Color color;
@@ -371,7 +399,8 @@ class _StatBar extends StatelessWidget {
             SizedBox(
               width: 52,
               child: Text(label,
-                  style: pixelText.copyWith(fontSize: 10, color: Palette.muted)),
+                  style:
+                      pixelText.copyWith(fontSize: 10, color: Palette.muted)),
             ),
             Expanded(
               child: ClipRRect(

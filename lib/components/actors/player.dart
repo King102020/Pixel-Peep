@@ -115,6 +115,7 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
   }
 
   void _physicsStep(double dt) {
+    _startClockOnInput();
     _handleAbilityInput();
     ability.update(dt);
     if (_invulnerableLeft > 0) _invulnerableLeft -= dt;
@@ -244,6 +245,15 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
     return super.onKeyEvent(event, keysPressed);
   }
 
+  /// The level clock starts on the player's first input, so looking around
+  /// before moving doesn't cost the time star.
+  void _startClockOnInput() {
+    if (!game.session.started &&
+        (horizontalMovement != 0 || jumpPressed || abilityPressed)) {
+      game.session.started = true;
+    }
+  }
+
   void _handleAbilityInput() {
     if (abilityPressed && !_abilityWasPressed) ability.onPressed();
     if (!abilityPressed && _abilityWasPressed) ability.onReleased();
@@ -311,6 +321,10 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
       ? position.x - width + (width - hitbox.offsetX - hitbox.width)
       : position.x + hitbox.offsetX;
 
+  bool _overlapsX(CollisionBlock block) =>
+      _hitboxLeft < block.x + block.width &&
+      _hitboxLeft + hitbox.width > block.x;
+
   void _checkHorizontalCollisions() {
     wallDirection = 0;
     for (final block in collisionBlocks) {
@@ -332,14 +346,17 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
     final wasOnGround = isOnGround;
     isOnGround = false;
     for (final block in collisionBlocks) {
-      if (!_collides(block)) continue;
+      if (block.isPlatform) {
+        // Thin one-way platforms: sweep the feet across this step so a fast
+        // fall can't skip past a 5px-tall plank.
+        if (velocity.y <= 0 || !_overlapsX(block)) continue;
+        final feet = position.y + hitbox.offsetY + hitbox.height;
+        final feetBefore = feet - velocity.y * fixedDelta;
+        if (feetBefore > block.y + 1 || feet < block.y) continue;
+      } else if (!_collides(block)) {
+        continue;
+      }
       if (velocity.y > 0) {
-        if (block.isPlatform) {
-          // Only land if the feet were above the platform before this step.
-          final feetBefore =
-              position.y + hitbox.offsetY + hitbox.height - velocity.y * fixedDelta;
-          if (feetBefore > block.y + 1) continue;
-        }
         if (!wasOnGround && velocity.y > 250) spawnDust();
         velocity.y = 0;
         position.y = block.y - hitbox.offsetY - hitbox.height;

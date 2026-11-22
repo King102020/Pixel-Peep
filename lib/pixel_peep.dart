@@ -70,10 +70,12 @@ class PixelPeep extends FlameGame
   void update(double dt) {
     if (inLevel) {
       if (joyStick != null) _updateJoystick();
-      if (!player.reachedEnd && !player.isDead) session.elapsed.value += dt;
-      _updateShake(dt);
+      if (session.started && !player.reachedEnd && !player.isDead) {
+        session.elapsed.value += dt;
+      }
     }
     super.update(dt);
+    if (inLevel) _updateShake(dt);
   }
 
   double _freezeLeft = 0;
@@ -99,11 +101,14 @@ class PixelPeep extends FlameGame
   void _updateShake(double dt) {
     if (_shakeLeft <= 0) return;
     _shakeLeft -= dt;
-    final offset = _shakeLeft > 0
-        ? Vector2((_rng.nextDouble() - 0.5) * 2, (_rng.nextDouble() - 0.5) * 2) *
-            _shakeIntensity
-        : Vector2.zero();
-    cam.viewfinder.transform.offset = offset;
+    if (_shakeLeft <= 0) return;
+    // Applied after the camera's follow step, so the follow can't erase it;
+    // the follow pulls the view back on the next frame.
+    cam.viewfinder.position += Vector2(
+          (_rng.nextDouble() - 0.5) * 2,
+          (_rng.nextDouble() - 0.5) * 2,
+        ) *
+        _shakeIntensity;
   }
 
   // ---------------------------------------------------------------- flow
