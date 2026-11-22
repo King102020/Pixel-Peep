@@ -1,0 +1,2 @@
+# Shell scripts run on Linux build machines (Vercel); keep LF endings.
+*.sh text eol=lf
