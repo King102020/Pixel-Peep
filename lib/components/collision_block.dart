@@ -1,8 +1,11 @@
 import 'package:flame/components.dart';
+import 'package:flutter/foundation.dart';
 
 class CollisionBlock extends PositionComponent {
-  bool isPlatform;
-  CollisionBlock({position, size, this.isPlatform=false}) : super(position: position, size: size){
-    debugMode=true;
+  CollisionBlock({super.position, super.size, this.isPlatform = false}) {
+    debugMode = kDebugMode;
   }
+
+  /// One-way platform: the player can jump up through it and land on top.
+  final bool isPlatform;
 }
