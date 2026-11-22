@@ -1,60 +1,109 @@
 import 'dart:async';
 
 import 'package:flame/components.dart';
+import 'package:flame/parallax.dart';
 import 'package:flame_tiled/flame_tiled.dart';
+import 'package:flutter/painting.dart';
+import 'package:pixel_peep/components/actors/player.dart';
 import 'package:pixel_peep/components/collision_block.dart';
+import 'package:pixel_peep/components/hazards/saw.dart';
+import 'package:pixel_peep/components/hazards/spikes.dart';
+import 'package:pixel_peep/components/items/checkpoint.dart';
+import 'package:pixel_peep/components/items/fruit.dart';
+import 'package:pixel_peep/pixel_peep.dart';
 
-import '../actors/player.dart';
-
-class Level extends World{
+/// Loads a Tiled map and turns its object layers into game components.
+class Level extends World with HasGameReference<PixelPeep> {
+  Level({required this.levelName, required this.player});
 
   final String levelName;
   final Player player;
-  Level({required this.levelName, required this.player});
-  late TiledComponent level;
-  List<CollisionBlock> collisionBlocks =[];
+  late TiledComponent map;
+  final List<CollisionBlock> collisionBlocks = [];
+
+  Vector2 get mapSize => Vector2(map.width, map.height);
 
   @override
-  FutureOr<void> onLoad() async{
+  FutureOr<void> onLoad() async {
+    map = await TiledComponent.load('$levelName.tmx', Vector2.all(16));
+    add(map);
 
-    level=await TiledComponent.load('$levelName.tmx', Vector2.all(16));
-    add(level);
-
-    final spawnPointsLayer =level.tileMap.getLayer<ObjectGroup>('spawnPoints');
-    if (spawnPointsLayer != null) {
-      for (final spawnPoint in spawnPointsLayer.objects) {
-        switch (spawnPoint.class_) {
-          case 'Player':
-            player.position = Vector2(spawnPoint.x, spawnPoint.y);
-            add(player);
-            break;
-          default:
-        }
-      }
-    }
-    final collisionsLayer =level.tileMap.getLayer<ObjectGroup>('Collisions');
-    if(collisionsLayer!=null){
-      for(final collision in collisionsLayer.objects){
-        switch(collision.class_){
-          case 'Platform':
-            final platform = CollisionBlock(
-                position: Vector2(collision.x, collision.y),
-                size: Vector2(collision.width, collision.height),
-                isPlatform: true);
-            collisionBlocks.add(platform);
-            add(platform);
-            break;
-          default:
-            final block=CollisionBlock(
-              position: Vector2(collision.x, collision.y),
-              size: Vector2(collision.width, collision.height)
-            );
-            collisionBlocks.add(block);
-            add(block);
-        }
-      }
-    }
-    player.collisionBlocks=collisionBlocks;
+    final props = map.tileMap.map.properties;
+    final fruitCount = _spawnObjects();
+    _addCollisions();
+    game.session.reset(
+      fruitCount: fruitCount,
+      target: double.tryParse(props.getValue<String>('time') ?? '') ?? 60,
+    );
+    await _addBackground(props.getValue<String>('bg') ?? 'Gray');
     return super.onLoad();
   }
+
+  Future<void> _addBackground(String color) async {
+    final parallax = await game.loadParallaxComponent(
+      [ParallaxImageData('Background/$color.png')],
+      baseVelocity: Vector2(0, -25),
+      repeat: ImageRepeat.repeat,
+      fill: LayerFill.none,
+    );
+    game.cam.backdrop.add(parallax);
+  }
+
+  /// Returns the number of fruits so the session can track completion.
+  int _spawnObjects() {
+    var fruits = 0;
+    final layer = map.tileMap.getLayer<ObjectGroup>('spawnPoints');
+    if (layer == null) return 0;
+    for (final obj in layer.objects) {
+      final pos = Vector2(obj.x, obj.y);
+      switch (obj.class_) {
+        case 'Player':
+          player
+            ..position = pos
+            ..respawnPoint = pos.clone();
+          add(player);
+        case 'Fruit':
+          fruits++;
+          add(Fruit(
+            fruit: obj.properties.getValue<String>('fruit') ?? 'Apple',
+            position: pos,
+          ));
+        case 'Checkpoint':
+          add(Checkpoint(position: pos));
+        case 'End':
+          add(EndFlag(position: pos));
+        case 'Spikes':
+          add(Spikes(position: pos));
+        case 'Saw':
+          add(Saw(
+            position: pos,
+            isVertical: _bool(obj, 'isVertical'),
+            offNeg: _num(obj, 'offNeg'),
+            offPos: _num(obj, 'offPos'),
+          ));
+      }
+    }
+    return fruits;
+  }
+
+  void _addCollisions() {
+    final layer = map.tileMap.getLayer<ObjectGroup>('Collisions');
+    if (layer == null) return;
+    for (final c in layer.objects) {
+      final block = CollisionBlock(
+        position: Vector2(c.x, c.y),
+        size: Vector2(c.width, c.height),
+        isPlatform: c.class_ == 'Platform',
+      );
+      collisionBlocks.add(block);
+      add(block);
+    }
+    player.collisionBlocks = collisionBlocks;
+  }
+
+  static bool _bool(TiledObject o, String key) =>
+      '${o.properties.getValue<Object>(key)}' == 'true';
+
+  static double _num(TiledObject o, String key) =>
+      double.tryParse('${o.properties.getValue<Object>(key) ?? 0}') ?? 0;
 }
