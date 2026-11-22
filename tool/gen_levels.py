@@ -122,9 +122,13 @@ def build(path):
                 props["offNeg"] = "3"
                 props["offPos"] = "3"
                 y = r * TILE - 8
-            if name in ("Bat", "Spikes", "FallingPlatform", "Fan"):
-                if name == "FallingPlatform":
-                    y = r * TILE
+            if name == "FallingPlatform":
+                y = r * TILE
+            if name == "Box":
+                props["loot"] = FRUITS[fruit_i % len(FRUITS)]
+                fruit_i += 1
+            if name == "Fire":
+                props["phase"] = f"{(c % 4) * 0.7:.1f}"
             prop_xml = ""
             if props:
                 prop_xml = "<properties>" + "".join(

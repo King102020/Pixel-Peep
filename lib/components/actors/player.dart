@@ -72,6 +72,9 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
   bool isDead = false;
   bool reachedEnd = false;
 
+  /// Upward push from a fan this frame (set by Fan, consumed by physics).
+  double windLift = 0;
+
   double get facingDirection => scale.x >= 0 ? 1 : -1;
   bool get isInvincible => _invulnerableLeft > 0 || ability.isInvincible;
   bool get isAttacking => ability.isAttacking;
@@ -101,6 +104,7 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
       _accumulator -= fixedDelta;
       if (isDead || reachedEnd) break;
     }
+    windLift = 0;
     // die() may have switched to the hit animation mid-step; don't overwrite it.
     if (!isDead && !reachedEnd) {
       _updatePlayerState();
@@ -132,9 +136,18 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
   }
 
   @override
-  void onCollisionStart(Set<Vector2> intersectionPoints, PositionComponent other) {
-    if (other is Hazard) takeHit(from: other);
-    super.onCollisionStart(intersectionPoints, other);
+  void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
+    // Continuous check so a fire that ignites while overlapping still hurts.
+    if (other is Hazard && other.isActive) takeHit(from: other);
+    super.onCollision(intersectionPoints, other);
+  }
+
+  /// Fired upward by a trampoline.
+  void launch(double speed) {
+    velocity.y = -speed;
+    isOnGround = false;
+    _doubleJumping = false;
+    ability.onLanded();
   }
 
   /// Loses one heart with knockback; dies when out of hearts.
@@ -266,8 +279,11 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
     if (wallDirection != 0 && ability.canWallSlide && velocity.y > 0) {
       maxFall = wallSlideSpeed;
     }
-    velocity.y = (velocity.y + gravity * stats.gravityScale * dt)
-        .clamp(-stats.jumpForce * 1.2, maxFall);
+    velocity.y += gravity * stats.gravityScale * dt;
+    if (windLift > 0) {
+      velocity.y = (velocity.y - windLift * dt).clamp(-260, double.infinity);
+    }
+    velocity.y = velocity.y.clamp(-600, maxFall);
     position.y += velocity.y * dt;
   }
 

@@ -45,6 +45,8 @@ class GroundPound extends Ability {
   void onLanded() {
     if (!_slamming) return;
     _slamming = false;
+    // Keep hitting for a moment so whatever we landed on takes the blow.
+    _punchLeft = 0.1;
     player.game.shake(intensity: 4);
     player.spawnDust();
     AudioService.instance.playSfx(Sfx.enemyDefeat);
