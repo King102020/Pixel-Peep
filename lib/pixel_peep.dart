@@ -1,11 +1,12 @@
 import 'dart:async';
-import 'dart:ui';
-import 'package:flame/camera.dart';
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:pixel_peep/components/hud/action_button.dart';
+import 'package:pixel_peep/components/hud/virtual_joystick.dart';
+import 'package:pixel_peep/services/audio_service.dart';
 import 'package:pixel_peep/components/actors/player.dart';
 
 import 'components/levels/level.dart';
@@ -16,12 +17,14 @@ class PixelPeep extends FlameGame with HasKeyboardHandlerComponents, DragCallbac
   late final CameraComponent cam;
   Player player=Player(character: 'Mask Dude');
   late JoystickComponent joyStick;
-  bool showJoyStick = !kIsWeb;
+  bool showJoyStick = !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
 
   @override
   FutureOr<void> onLoad() async{
     await images.loadAllImages();
-    await images.load('HUD/Joystick.png');
+    await AudioService.instance.preload();
 
     final world=Level(levelName: 'level-01', player: player );
 
@@ -44,19 +47,20 @@ class PixelPeep extends FlameGame with HasKeyboardHandlerComponents, DragCallbac
   }
 
   void addJoyStick() {
-    joyStick = JoystickComponent(
-      knob: SpriteComponent(
-        sprite: Sprite(
-          images.fromCache('HUD/Knob.png'),
-        ),
-      ),
-      //knobRadius: ,
-      background: SpriteComponent(
-        sprite: Sprite(images.fromCache('HUD/Joystick.png'))
-      ),
-      margin: const EdgeInsets.only(left:32, bottom: 32),
-    );
+    joyStick = VirtualJoystick();
     add(joyStick);
+    add(ActionButton(
+      icon: ActionIcon.jump,
+      margin: const EdgeInsets.only(right: 32, bottom: 32),
+      onPressed: () => player.jumpPressed = true,
+      onReleased: () => player.jumpPressed = false,
+    ));
+    add(ActionButton(
+      icon: ActionIcon.ability,
+      margin: const EdgeInsets.only(right: 100, bottom: 48),
+      onPressed: () => player.abilityPressed = true,
+      onReleased: () => player.abilityPressed = false,
+    ));
   }
 
   void updateJoystick(){
