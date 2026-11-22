@@ -19,6 +19,8 @@ class Player extends SpriteAnimationGroupComponent with HasGameRef<PixelPeep>, K
   final double stepTime=0.05;
 
   double horizontalMovement=0;
+  bool jumpPressed=false;
+  bool abilityPressed=false;
   double moveSpeed=100;
   Vector2 velocity= Vector2.zero();
   List<CollisionBlock> collisionBlocks =[];
