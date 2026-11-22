@@ -207,6 +207,11 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
 
   @override
   bool onKeyEvent(KeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
+    if (event is KeyDownEvent &&
+        (event.logicalKey == LogicalKeyboardKey.escape ||
+            event.logicalKey == LogicalKeyboardKey.keyP)) {
+      game.togglePause();
+    }
     final left = keysPressed.contains(LogicalKeyboardKey.keyA) ||
         keysPressed.contains(LogicalKeyboardKey.arrowLeft);
     final right = keysPressed.contains(LogicalKeyboardKey.keyD) ||

@@ -4,12 +4,16 @@ class LevelInfo {
     required this.file,
     required this.name,
     required this.world,
+    this.tip,
   });
 
   /// Tiled map file name in assets/tiles, without extension.
   final String file;
   final String name;
   final int world;
+
+  /// Hint shown on character select about which hero shines here.
+  final String? tip;
 }
 
 const levels = <LevelInfo>[
