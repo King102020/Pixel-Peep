@@ -124,6 +124,7 @@ abstract class Enemy extends SpriteAnimationGroupComponent<EnemyState>
       if (ability is GroundPound && ability.isSlamming) player.bounce();
     } else if (stomping) {
       player.bounce();
+      game.shake(intensity: 2.5, duration: 0.15);
       if (toughness == Toughness.soft) hurt(1);
       AudioService.instance.playSfx(Sfx.jump);
     } else {
@@ -237,7 +238,12 @@ class BossGolem extends Golem {
   /// Called when the boss falls; the level then reveals the exit.
   void Function()? onBossDefeated;
 
+  static const double windupTime = 0.7;
+  static const double dizzyTime = 1.8;
+  static const double chargeSpeed = 170;
+
   double _chargeTimer = 2;
+  double _windup = 0;
   double _dizzy = 0;
   bool _charging = false;
   // Charges across the whole room, stopping short of the walls.
@@ -255,34 +261,60 @@ class BossGolem extends Golem {
     }
     opacity = 1;
     if (_charging) {
-      position.x += direction * 170 * dt;
+      position.x += direction * chargeSpeed * dt;
       if (position.x <= _arenaMin || position.x >= _arenaMax) {
         position.x = position.x.clamp(_arenaMin, _arenaMax);
         _charging = false;
-        _dizzy = 1.6;
+        _dizzy = dizzyTime;
         _chargeTimer = 2.2;
         game.shake(intensity: 5);
+      }
+      return;
+    }
+    if (_windup > 0) {
+      // The tell: shudder in place and flash red-white, then charge.
+      _windup -= dt;
+      _wobble = (_windup * 40).floor().isEven ? 1 : -1;
+      position.x += _wobble;
+      opacity = (_windup * 12).floor().isEven ? 0.5 : 1;
+      if (_windup <= 0) {
+        opacity = 1;
+        _charging = true;
       }
       return;
     }
     _chargeTimer -= dt;
     direction = (game.player.center.x - center.x).sign;
     _face(direction);
-    if (_chargeTimer <= 0) _charging = true;
+    if (_chargeTimer <= 0) _windup = windupTime;
   }
+
+  double _wobble = 0;
 
   @override
   void _touch(Player player) {
-    // Any hero can stomp the boss while it's dizzy.
-    if (isDizzy &&
-        player.velocity.y > 0 &&
+    if (_hurtCooldown > 0) return;
+    final stomping = player.velocity.y > 0 &&
         player.position.y + Player.hitbox.offsetY + Player.hitbox.height <
-            absoluteCenter.y) {
+            absoluteCenter.y;
+    if (isDizzy && stomping) {
+      // The dizzy stomp is the big hit, for every hero.
       player.bounce();
-      if (_hurtCooldown <= 0) hurt(1);
+      game.shake(intensity: 4);
+      hurt(2);
       return;
     }
-    super._touch(player);
+    if (isDizzy && player.isAttacking) {
+      // Dash and punch only chip him, and only while he's dizzy.
+      hurt(1);
+      return;
+    }
+    if (stomping) {
+      // Bounces off his rocky head while he's alert.
+      player.bounce();
+      return;
+    }
+    player.takeHit(from: this);
   }
 
   @override

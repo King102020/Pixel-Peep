@@ -5,7 +5,7 @@ import 'package:pixel_peep/services/audio_service.dart';
 class GroundPound extends Ability {
   GroundPound(super.player);
 
-  static const double slamSpeed = 560;
+  static const double slamSpeed = 620;
   static const double punchTime = 0.22;
   double _punchLeft = 0;
   bool _slamming = false;
@@ -16,12 +16,14 @@ class GroundPound extends Ability {
   @override
   bool get isAttacking => isPunching || _slamming;
 
+  /// Lets the slam exceed the normal fall-speed cap.
+  @override
+  double? get fallSpeedCap => _slamming ? slamSpeed : null;
+
   @override
   bool activate() {
     if (player.isOnGround) {
       _punchLeft = punchTime;
-      // A small lunge sells the punch.
-      player.position.x += player.facingDirection * 4;
     } else {
       _slamming = true;
       player.velocity.y = slamSpeed;

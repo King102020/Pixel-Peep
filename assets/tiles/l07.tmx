@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.0" orientation="orthogonal" renderorder="right-down" width="90" height="23" tilewidth="16" tileheight="16" infinite="0" nextlayerid="4" nextobjectid="90">
+<map version="1.10" tiledversion="1.11.0" orientation="orthogonal" renderorder="right-down" width="90" height="23" tilewidth="16" tileheight="16" infinite="0" nextlayerid="4" nextobjectid="84">
  <properties><property name="theme" value="grass"/><property name="bg" value="Gray"/><property name="time" value="70"/><property name="name" value="Spike_Caverns"/></properties>
  <tileset firstgid="1" source="Pixel peep.tsx"/>
  <layer id="1" name="Terrain" width="90" height="23">
@@ -97,12 +97,12 @@
   <object id="63" name="Fruit" type="Fruit" x="312" y="200" width="32" height="32"><properties><property name="fruit" value="Melon"/></properties></object>
   <object id="64" name="Fruit" type="Fruit" x="344" y="200" width="32" height="32"><properties><property name="fruit" value="Orange"/></properties></object>
   <object id="65" name="Slime" type="Slime" x="952" y="192" width="32" height="32"></object>
-  <object id="66" name="Fruit" type="Fruit" x="88" y="232" width="32" height="32"><properties><property name="fruit" value="Pineapple"/></properties></object>
-  <object id="67" name="Fruit" type="Fruit" x="120" y="232" width="32" height="32"><properties><property name="fruit" value="Strawberry"/></properties></object>
-  <object id="68" name="Fruit" type="Fruit" x="152" y="232" width="32" height="32"><properties><property name="fruit" value="Apple"/></properties></object>
-  <object id="69" name="Fruit" type="Fruit" x="712" y="232" width="32" height="32"><properties><property name="fruit" value="Bananas"/></properties></object>
-  <object id="70" name="Fruit" type="Fruit" x="744" y="232" width="32" height="32"><properties><property name="fruit" value="Cherries"/></properties></object>
-  <object id="71" name="Fruit" type="Fruit" x="776" y="232" width="32" height="32"><properties><property name="fruit" value="Kiwi"/></properties></object>
+  <object id="66" name="Fruit" type="Fruit" x="696" y="216" width="32" height="32"><properties><property name="fruit" value="Pineapple"/></properties></object>
+  <object id="67" name="Fruit" type="Fruit" x="728" y="216" width="32" height="32"><properties><property name="fruit" value="Strawberry"/></properties></object>
+  <object id="68" name="Fruit" type="Fruit" x="760" y="216" width="32" height="32"><properties><property name="fruit" value="Apple"/></properties></object>
+  <object id="69" name="Fruit" type="Fruit" x="88" y="232" width="32" height="32"><properties><property name="fruit" value="Bananas"/></properties></object>
+  <object id="70" name="Fruit" type="Fruit" x="120" y="232" width="32" height="32"><properties><property name="fruit" value="Cherries"/></properties></object>
+  <object id="71" name="Fruit" type="Fruit" x="152" y="232" width="32" height="32"><properties><property name="fruit" value="Kiwi"/></properties></object>
   <object id="72" name="Player" type="Player" x="40" y="240" width="32" height="32"></object>
   <object id="73" name="Spikes" type="Spikes" x="192" y="256" width="16" height="16"></object>
   <object id="74" name="Spikes" type="Spikes" x="208" y="256" width="16" height="16"></object>
@@ -110,16 +110,10 @@
   <object id="76" name="Spikes" type="Spikes" x="448" y="256" width="16" height="16"></object>
   <object id="77" name="Spikes" type="Spikes" x="464" y="256" width="16" height="16"></object>
   <object id="78" name="Spikes" type="Spikes" x="480" y="256" width="16" height="16"></object>
-  <object id="79" name="Spikes" type="Spikes" x="496" y="256" width="16" height="16"></object>
-  <object id="80" name="Checkpoint" type="Checkpoint" x="584" y="208" width="64" height="64"></object>
-  <object id="81" name="Spikes" type="Spikes" x="704" y="256" width="16" height="16"></object>
-  <object id="82" name="Spikes" type="Spikes" x="720" y="256" width="16" height="16"></object>
-  <object id="83" name="Spikes" type="Spikes" x="736" y="256" width="16" height="16"></object>
-  <object id="84" name="Spikes" type="Spikes" x="752" y="256" width="16" height="16"></object>
-  <object id="85" name="Spikes" type="Spikes" x="768" y="256" width="16" height="16"></object>
-  <object id="86" name="Spikes" type="Spikes" x="784" y="256" width="16" height="16"></object>
-  <object id="87" name="Spikes" type="Spikes" x="800" y="256" width="16" height="16"></object>
-  <object id="88" name="Spikes" type="Spikes" x="816" y="256" width="16" height="16"></object>
-  <object id="89" name="End" type="End" x="1320" y="208" width="64" height="64"></object>
+  <object id="79" name="Checkpoint" type="Checkpoint" x="584" y="208" width="64" height="64"></object>
+  <object id="80" name="Spikes" type="Spikes" x="720" y="256" width="16" height="16"></object>
+  <object id="81" name="Spikes" type="Spikes" x="736" y="256" width="16" height="16"></object>
+  <object id="82" name="Spikes" type="Spikes" x="752" y="256" width="16" height="16"></object>
+  <object id="83" name="End" type="End" x="1320" y="208" width="64" height="64"></object>
  </objectgroup>
 </map>
