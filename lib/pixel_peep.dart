@@ -11,6 +11,7 @@ import 'package:pixel_peep/components/actors/player.dart';
 import 'package:pixel_peep/components/hud/action_button.dart';
 import 'package:pixel_peep/components/hud/virtual_joystick.dart';
 import 'package:pixel_peep/components/levels/level.dart';
+import 'package:pixel_peep/data/characters.dart';
 import 'package:pixel_peep/data/levels.dart';
 import 'package:pixel_peep/game/game_session.dart';
 import 'package:pixel_peep/services/audio_service.dart';
@@ -31,7 +32,11 @@ class PixelPeep extends FlameGame
   late Level level;
   late Player player;
   int levelIndex = 0;
-  String character = 'Ninja Frog';
+  HeroId hero = HeroId.blueNinja;
+
+  static final _rng = math.Random();
+  double _shakeLeft = 0;
+  double _shakeIntensity = 0;
 
   JoystickComponent? joyStick;
   final bool showTouchControls = !kIsWeb &&
@@ -50,13 +55,30 @@ class PixelPeep extends FlameGame
   void update(double dt) {
     if (joyStick != null) _updateJoystick();
     if (!player.reachedEnd) session.elapsed.value += dt;
+    _updateShake(dt);
     super.update(dt);
+  }
+
+  /// Brief screen shake for hits and ground pounds.
+  void shake({double intensity = 3, double duration = 0.2}) {
+    _shakeIntensity = intensity;
+    _shakeLeft = duration;
+  }
+
+  void _updateShake(double dt) {
+    if (_shakeLeft <= 0) return;
+    _shakeLeft -= dt;
+    final offset = _shakeLeft > 0
+        ? Vector2((_rng.nextDouble() - 0.5) * 2, (_rng.nextDouble() - 0.5) * 2) *
+            _shakeIntensity
+        : Vector2.zero();
+    cam.viewfinder.transform.offset = offset;
   }
 
   Future<void> loadLevel(int index) async {
     levelIndex = index;
     removeWhere((c) => c is Level || c is CameraComponent);
-    player = Player(character: character);
+    player = Player(hero: hero);
     level = Level(levelName: levels[index].file, player: player);
     cam = CameraComponent.withFixedResolution(
       world: level,

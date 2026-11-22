@@ -4,55 +4,77 @@ import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:pixel_peep/components/abilities/ability.dart';
+import 'package:pixel_peep/components/abilities/dash.dart';
 import 'package:pixel_peep/components/collision_block.dart';
+import 'package:pixel_peep/components/effects/dust.dart';
 import 'package:pixel_peep/components/effects/one_shot_effect.dart';
 import 'package:pixel_peep/components/hazards/hazard.dart';
 import 'package:pixel_peep/components/utils.dart';
+import 'package:pixel_peep/data/characters.dart';
 import 'package:pixel_peep/pixel_peep.dart';
 import 'package:pixel_peep/services/audio_service.dart';
 
-enum PlayerState { idle, running, jumping, falling, hit }
+enum PlayerState { idle, running, jumping, falling, doubleJump, wallSlide, hit }
 
 class Player extends SpriteAnimationGroupComponent<PlayerState>
     with HasGameReference<PixelPeep>, KeyboardHandler, CollisionCallbacks {
-  Player({super.position, this.character = 'Ninja Frog'});
+  Player({super.position, this.hero = HeroId.blueNinja});
 
-  String character;
+  final HeroId hero;
+  late final Ability ability = Ability.forHero(hero, this);
 
-  // Tuning. These move to CharacterStats in Milestone 3.
   static const double stepTime = 0.05;
   static const double gravity = 980;
-  /// Full jump reaches ~66px (about 4 tiles), clearing 3-tile ledges.
-  static const double jumpForce = 360;
   static const double terminalVelocity = 400;
-  static const double moveSpeed = 100;
+  static const double wallSlideSpeed = 50;
   /// Releasing jump early multiplies upward speed by this (variable jump height).
   static const double jumpCutMultiplier = 0.5;
   static const double coyoteTime = 0.1;
   static const double jumpBufferTime = 0.1;
+  static const double invulnerableTime = 1.2;
+  /// After a wall jump, input is ignored briefly so the kick carries the hero.
+  static const double wallKickLockTime = 0.15;
   /// Physics runs at a fixed rate so jumps behave identically on every device.
   static const double fixedDelta = 1 / 60;
 
+  /// Tiny gap left after resolving a wall hit, so float rounding never makes
+  /// the next stacked wall tile count as ground.
+  static const double _skin = 0.01;
+
   static const hitbox = PlayerHitbox(offsetX: 10, offsetY: 4, width: 14, height: 28);
+
+  CharacterStats get stats => hero.stats;
 
   double horizontalMovement = 0;
   Vector2 velocity = Vector2.zero();
   bool isOnGround = false;
   List<CollisionBlock> collisionBlocks = [];
 
+  /// -1 when pressing into a wall on the left, 1 on the right, 0 otherwise.
+  int wallDirection = 0;
+
   /// Set by keyboard or touch buttons.
   bool jumpPressed = false;
   bool abilityPressed = false;
 
   bool _jumpWasPressed = false;
+  bool _abilityWasPressed = false;
   double _coyoteTimer = 0;
   double _jumpBufferTimer = 0;
   double _accumulator = 0;
+  double _invulnerableLeft = 0;
+  double _wallKickLeft = 0;
+  bool _doubleJumping = false;
 
   /// Where the player reappears after dying; moved forward by checkpoints.
   Vector2 respawnPoint = Vector2.zero();
   bool isDead = false;
   bool reachedEnd = false;
+
+  double get facingDirection => scale.x >= 0 ? 1 : -1;
+  bool get isInvincible => _invulnerableLeft > 0 || ability.isInvincible;
+  bool get isAttacking => ability.isAttacking;
 
   @override
   FutureOr<void> onLoad() {
@@ -62,6 +84,8 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
       position: Vector2(hitbox.offsetX, hitbox.offsetY),
       size: Vector2(hitbox.width, hitbox.height),
     ));
+    game.session.maxHp.value = stats.maxHp;
+    game.session.hp.value = stats.maxHp;
     return super.onLoad();
   }
 
@@ -78,30 +102,72 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
       if (isDead || reachedEnd) break;
     }
     // die() may have switched to the hit animation mid-step; don't overwrite it.
-    if (!isDead && !reachedEnd) _updatePlayerState();
+    if (!isDead && !reachedEnd) {
+      _updatePlayerState();
+      _updateBlink(dt);
+    }
+    game.session.abilityCooldown.value = ability.cooldownProgress;
     super.update(dt);
   }
 
   void _physicsStep(double dt) {
-    _handleJumpInput(dt);
-    velocity.x = horizontalMovement * moveSpeed;
-    position.x += velocity.x * dt;
-    _checkHorizontalCollisions();
-    _applyGravity(dt);
-    _checkVerticalCollisions();
+    _handleAbilityInput();
+    ability.update(dt);
+    if (_invulnerableLeft > 0) _invulnerableLeft -= dt;
+    if (_wallKickLeft > 0) _wallKickLeft -= dt;
+
+    if (ability.overrideMovement(dt)) {
+      position.x += velocity.x * dt;
+      _checkHorizontalCollisions();
+      _checkVerticalCollisions();
+    } else {
+      _handleJumpInput(dt);
+      if (_wallKickLeft <= 0) velocity.x = horizontalMovement * stats.moveSpeed;
+      position.x += velocity.x * dt;
+      _checkHorizontalCollisions();
+      _applyGravity(dt);
+      _checkVerticalCollisions();
+    }
     if (position.y > game.level.mapSize.y + 32) die();
   }
 
   @override
   void onCollisionStart(Set<Vector2> intersectionPoints, PositionComponent other) {
-    if (other is Hazard) die();
+    if (other is Hazard) takeHit(from: other);
     super.onCollisionStart(intersectionPoints, other);
+  }
+
+  /// Loses one heart with knockback; dies when out of hearts.
+  void takeHit({PositionComponent? from}) {
+    if (isDead || reachedEnd || isInvincible) return;
+    game.session.hp.value--;
+    game.shake();
+    if (game.session.hp.value <= 0) {
+      die();
+      return;
+    }
+    AudioService.instance.playSfx(Sfx.hit);
+    _invulnerableLeft = invulnerableTime;
+    final away = from == null
+        ? -facingDirection
+        : (center.x >= from.center.x ? 1.0 : -1.0);
+    velocity
+      ..x = away * 140
+      ..y = -200;
+    _wallKickLeft = 0.2;
+  }
+
+  /// Bounces off an enemy that was stomped.
+  void bounce() {
+    velocity.y = -stats.jumpForce * 0.7;
+    isOnGround = false;
   }
 
   void die() {
     if (isDead || reachedEnd) return;
     isDead = true;
     game.session.deaths.value++;
+    game.shake(intensity: 5);
     AudioService.instance.playSfx(Sfx.hit);
     velocity.setZero();
     current = PlayerState.hit;
@@ -110,16 +176,19 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
 
   void _respawn() {
     if (scale.x < 0) flipHorizontallyAroundCenter();
-    final center = position + Vector2(16, 16);
-    parent?.add(OneShotEffect.disappear(center: center));
+    final oldCenter = position + Vector2(16, 16);
+    parent?.add(OneShotEffect.disappear(center: oldCenter));
     position = respawnPoint.clone();
     opacity = 0;
+    ability.reset();
     parent?.add(OneShotEffect.appear(
       center: position + Vector2(16, 16),
       onDone: () {
         opacity = 1;
         isDead = false;
         _accumulator = 0;
+        game.session.hp.value = stats.maxHp;
+        _invulnerableLeft = 0.5;
       },
     ));
   }
@@ -150,9 +219,17 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
         (!kIsWeb &&
             (keysPressed.contains(LogicalKeyboardKey.keyW) ||
                 keysPressed.contains(LogicalKeyboardKey.arrowUp)));
-    abilityPressed = keysPressed.contains(LogicalKeyboardKey.keyE);
+    abilityPressed = keysPressed.contains(LogicalKeyboardKey.keyE) ||
+        keysPressed.contains(LogicalKeyboardKey.keyJ) ||
+        keysPressed.contains(LogicalKeyboardKey.shiftLeft);
 
     return super.onKeyEvent(event, keysPressed);
+  }
+
+  void _handleAbilityInput() {
+    if (abilityPressed && !_abilityWasPressed) ability.onPressed();
+    if (!abilityPressed && _abilityWasPressed) ability.onReleased();
+    _abilityWasPressed = abilityPressed;
   }
 
   void _handleJumpInput(double dt) {
@@ -164,22 +241,41 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
     _jumpBufferTimer = justPressed ? jumpBufferTime : _jumpBufferTimer - dt;
 
     if (_jumpBufferTimer > 0 && _coyoteTimer > 0) {
-      velocity.y = -jumpForce;
+      velocity.y = -stats.jumpForce;
       isOnGround = false;
       _coyoteTimer = 0;
       _jumpBufferTimer = 0;
+      spawnDust();
       AudioService.instance.playSfx(Sfx.jump);
+    } else if (justPressed && !isOnGround && ability.onAirJump()) {
+      _jumpBufferTimer = 0;
     }
 
-    if (justReleased && velocity.y < 0) {
+    if (justReleased && velocity.y < 0 && _wallKickLeft <= 0) {
       velocity.y *= jumpCutMultiplier;
     }
   }
 
   void _applyGravity(double dt) {
-    velocity.y = (velocity.y + gravity * dt).clamp(-jumpForce, terminalVelocity);
+    var maxFall = ability.fallSpeedCap ?? terminalVelocity;
+    if (wallDirection != 0 && ability.canWallSlide && velocity.y > 0) {
+      maxFall = wallSlideSpeed;
+    }
+    velocity.y = (velocity.y + gravity * stats.gravityScale * dt)
+        .clamp(-stats.jumpForce * 1.2, maxFall);
     position.y += velocity.y * dt;
   }
+
+  void playDoubleJump() => _doubleJumping = true;
+
+  void wallKick(int direction) {
+    _wallKickLeft = wallKickLockTime;
+    wallDirection = 0;
+    if (direction != facingDirection) flipHorizontallyAroundCenter();
+  }
+
+  void spawnDust() =>
+      parent?.add(Dust(position: Vector2(center.x, position.y + 32)));
 
   bool _collides(CollisionBlock block) => checkCollision(
         position: position,
@@ -195,19 +291,24 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
       : position.x + hitbox.offsetX;
 
   void _checkHorizontalCollisions() {
+    wallDirection = 0;
     for (final block in collisionBlocks) {
       if (block.isPlatform || !_collides(block)) continue;
       if (velocity.x > 0) {
-        position.x += block.x - (_hitboxLeft + hitbox.width);
+        position.x += block.x - (_hitboxLeft + hitbox.width) - _skin;
+        wallDirection = 1;
       } else if (velocity.x < 0) {
-        position.x += block.x + block.width - _hitboxLeft;
+        position.x += block.x + block.width - _hitboxLeft + _skin;
+        wallDirection = -1;
       }
       velocity.x = 0;
       break;
     }
+    if (isOnGround) wallDirection = 0;
   }
 
   void _checkVerticalCollisions() {
+    final wasOnGround = isOnGround;
     isOnGround = false;
     for (final block in collisionBlocks) {
       if (!_collides(block)) continue;
@@ -218,9 +319,12 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
               position.y + hitbox.offsetY + hitbox.height - velocity.y * fixedDelta;
           if (feetBefore > block.y + 1) continue;
         }
+        if (!wasOnGround && velocity.y > 250) spawnDust();
         velocity.y = 0;
         position.y = block.y - hitbox.offsetY - hitbox.height;
         isOnGround = true;
+        _doubleJumping = false;
+        ability.onLanded();
         break;
       }
       if (velocity.y < 0 && !block.isPlatform) {
@@ -231,17 +335,35 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
   }
 
   void _updatePlayerState() {
-    if (velocity.x < 0 && scale.x > 0) {
-      flipHorizontallyAroundCenter();
-    } else if (velocity.x > 0 && scale.x < 0) {
-      flipHorizontallyAroundCenter();
+    final dashing = ability is Dash && (ability as Dash).isDashing;
+    if (_wallKickLeft <= 0 && !dashing) {
+      if (velocity.x < 0 && scale.x > 0) {
+        flipHorizontallyAroundCenter();
+      } else if (velocity.x > 0 && scale.x < 0) {
+        flipHorizontallyAroundCenter();
+      }
     }
 
     var state = velocity.x != 0 ? PlayerState.running : PlayerState.idle;
     if (!isOnGround) {
-      state = velocity.y < 0 ? PlayerState.jumping : PlayerState.falling;
+      if (wallDirection != 0 && ability.canWallSlide && velocity.y > 0) {
+        state = PlayerState.wallSlide;
+      } else if (_doubleJumping && velocity.y < 0) {
+        state = PlayerState.doubleJump;
+      } else {
+        state = velocity.y < 0 ? PlayerState.jumping : PlayerState.falling;
+      }
     }
     current = state;
+  }
+
+  /// Flicker while invulnerable after a hit.
+  void _updateBlink(double dt) {
+    if (_invulnerableLeft > 0) {
+      opacity = (_invulnerableLeft * 10).floor().isEven ? 0.3 : 1;
+    } else if (!ability.isInvincible) {
+      opacity = 1;
+    }
   }
 
   void _loadAllAnimations() {
@@ -250,6 +372,8 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
       PlayerState.running: _spriteAnimation('Run', 12),
       PlayerState.jumping: _spriteAnimation('Jump', 1),
       PlayerState.falling: _spriteAnimation('Fall', 1),
+      PlayerState.doubleJump: _spriteAnimation('Double Jump', 6),
+      PlayerState.wallSlide: _spriteAnimation('Wall Jump', 5),
       PlayerState.hit: _spriteAnimation('Hit', 7, loop: false),
     };
     current = PlayerState.idle;
@@ -257,7 +381,7 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
 
   SpriteAnimation _spriteAnimation(String state, int amount, {bool loop = true}) {
     return SpriteAnimation.fromFrameData(
-      game.images.fromCache('Main Characters/$character/$state (32x32).png'),
+      game.images.fromCache('Main Characters/${hero.sprite}/$state (32x32).png'),
       SpriteAnimationData.sequenced(
         amount: amount,
         stepTime: stepTime,
