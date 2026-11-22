@@ -47,9 +47,16 @@ class PixelPeep extends FlameGame
   double _shakeIntensity = 0;
 
   JoystickComponent? joyStick;
-  final bool showTouchControls = !kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.android ||
-          defaultTargetPlatform == TargetPlatform.iOS);
+  /// Phones and tablets get on-screen controls, including in a mobile browser
+  /// (Flutter web reports the platform from the user agent).
+  final bool showTouchControls =
+      defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS;
+
+  /// Pauses when a phone is turned to portrait mid-level.
+  void pauseForRotation() {
+    if (inLevel && !paused && !player.reachedEnd) togglePause();
+  }
 
   @override
   FutureOr<void> onLoad() async {
@@ -155,12 +162,16 @@ class PixelPeep extends FlameGame
 
   /// Called by the player once the finish animation is done.
   Future<void> completeLevel() async {
+    previousBest = save.bestTimeFor(levelIndex);
     lastResult = LevelResult(stars: session.stars, seconds: session.elapsed.value);
     await save.recordResult(levelIndex, lastResult!);
     _showOnly(Overlays.levelComplete);
   }
 
   LevelResult? lastResult;
+
+  /// Best time before the run that just finished, for the split display.
+  double? previousBest;
 
   void _unloadLevel() {
     inLevel = false;

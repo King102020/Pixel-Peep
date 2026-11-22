@@ -18,7 +18,8 @@ const pixelText = TextStyle(
   shadows: [Shadow(color: Colors.black54, offset: Offset(2, 2))],
 );
 
-/// Dims the game behind a menu.
+/// Dims the game behind a menu. Content scrolls when the window is too short,
+/// so no button is ever cut off on a small phone.
 class Scrim extends StatelessWidget {
   const Scrim({super.key, required this.child, this.opacity = 0.75});
   final Widget child;
@@ -27,9 +28,53 @@ class Scrim extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ColoredBox(
         color: Palette.background.withValues(alpha: opacity),
-        child: SafeArea(child: Center(child: child)),
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (_, box) => ScrollHint(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: box.maxHeight,
+                  minWidth: box.maxWidth,
+                ),
+                child: Center(
+                  child: Padding(padding: const EdgeInsets.all(8), child: child),
+                ),
+              ),
+            ),
+          ),
+        ),
       );
 }
+
+/// Vertical scroll view with an always-visible scrollbar, so players can
+/// tell there is more below.
+class ScrollHint extends StatefulWidget {
+  const ScrollHint({super.key, required this.child});
+  final Widget child;
+
+  @override
+  State<ScrollHint> createState() => _ScrollHintState();
+}
+
+class _ScrollHintState extends State<ScrollHint> {
+  final _controller = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scrollbar(
+        controller: _controller,
+        thumbVisibility: true,
+        child: SingleChildScrollView(controller: _controller, child: widget.child),
+      );
+}
+
+/// True on short windows (phone landscape), where menus use smaller type.
+bool isShortScreen(BuildContext context) => MediaQuery.sizeOf(context).height < 420;
 
 class Panel extends StatelessWidget {
   const Panel({super.key, required this.child, this.padding = 20});
@@ -149,4 +194,27 @@ String formatTime(double seconds) {
   final m = seconds ~/ 60;
   final s = (seconds % 60).floor().toString().padLeft(2, '0');
   return '$m:$s';
+}
+
+
+/// Lays [builder]'s widget over the letterboxed 16:9 playfield so in-game UI
+/// lines up with the game on any window shape.
+class GameRect extends StatelessWidget {
+  const GameRect({super.key, required this.builder});
+  final Widget Function(Size rect) builder;
+
+  static const double aspect = 16 / 9;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (_, box) {
+        var w = box.maxWidth, h = box.maxHeight;
+        if (w / h > aspect) {
+          w = h * aspect;
+        } else {
+          h = w / aspect;
+        }
+        return Center(
+          child: SizedBox(width: w, height: h, child: builder(Size(w, h))),
+        );
+      });
 }

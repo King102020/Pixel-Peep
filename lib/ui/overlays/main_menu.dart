@@ -18,6 +18,7 @@ class _MainMenuState extends State<MainMenu> {
   @override
   Widget build(BuildContext context) {
     final audio = AudioService.instance;
+    final short = isShortScreen(context);
     return Scrim(
       opacity: 1,
       child: Column(
@@ -33,13 +34,13 @@ class _MainMenuState extends State<MainMenu> {
             onEnd: () => setState(() {}),
             child: Text(
               'PIXEL PEEP',
-              style: pixelText.copyWith(fontSize: 48, color: Palette.accent),
+              style: pixelText.copyWith(fontSize: short ? 32 : 48, color: Palette.accent),
             ),
           ),
           const SizedBox(height: 4),
           Text('Pick a hero. Clear the level.',
               style: pixelText.copyWith(fontSize: 14, color: Palette.muted)),
-          const SizedBox(height: 18),
+          SizedBox(height: short ? 8 : 18),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -47,7 +48,7 @@ class _MainMenuState extends State<MainMenu> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   child: SizedBox.square(
-                    dimension: 56,
+                    dimension: short ? 40 : 56,
                     child: SpriteAnimationWidget.asset(
                       path: 'Main Characters/${hero.sprite}/Run (32x32).png',
                       images: widget.game.images,
@@ -61,7 +62,7 @@ class _MainMenuState extends State<MainMenu> {
                 ),
             ],
           ),
-          const SizedBox(height: 22),
+          SizedBox(height: short ? 10 : 22),
           GameButton(
             label: 'PLAY',
             icon: Icons.play_arrow_rounded,
