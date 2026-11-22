@@ -4,10 +4,12 @@ import 'package:flame/components.dart';
 import 'package:flame/parallax.dart';
 import 'package:flame_tiled/flame_tiled.dart';
 import 'package:flutter/painting.dart';
+import 'package:pixel_peep/components/actors/enemy.dart';
 import 'package:pixel_peep/components/actors/player.dart';
 import 'package:pixel_peep/components/collision_block.dart';
 import 'package:pixel_peep/components/hazards/saw.dart';
 import 'package:pixel_peep/components/hazards/spikes.dart';
+import 'package:pixel_peep/components/hazards/traps.dart';
 import 'package:pixel_peep/components/items/checkpoint.dart';
 import 'package:pixel_peep/components/items/fruit.dart';
 import 'package:pixel_peep/pixel_peep.dart';
@@ -52,6 +54,8 @@ class Level extends World with HasGameReference<PixelPeep> {
   /// Returns the number of fruits so the session can track completion.
   int _spawnObjects() {
     var fruits = 0;
+    EndFlag? end;
+    BossGolem? boss;
     final layer = map.tileMap.getLayer<ObjectGroup>('spawnPoints');
     if (layer == null) return 0;
     for (final obj in layer.objects) {
@@ -71,7 +75,7 @@ class Level extends World with HasGameReference<PixelPeep> {
         case 'Checkpoint':
           add(Checkpoint(position: pos));
         case 'End':
-          add(EndFlag(position: pos));
+          end = EndFlag(position: pos);
         case 'Spikes':
           add(Spikes(position: pos));
         case 'Saw':
@@ -81,6 +85,40 @@ class Level extends World with HasGameReference<PixelPeep> {
             offNeg: _num(obj, 'offNeg'),
             offPos: _num(obj, 'offPos'),
           ));
+        case 'Trampoline':
+          add(Trampoline(position: pos));
+        case 'Fan':
+          add(Fan(position: pos));
+        case 'Fire':
+          add(Fire(position: pos, phase: _num(obj, 'phase')));
+        case 'FallingPlatform':
+          final platform = FallingPlatform(position: pos);
+          collisionBlocks.add(platform);
+          add(platform);
+        case 'Box':
+          final loot = obj.properties.getValue<String>('loot');
+          if (loot != null) fruits++;
+          final box = Box(position: pos, loot: loot);
+          collisionBlocks.add(box);
+          add(box);
+        case 'Slime':
+          add(Slime(position: pos));
+        case 'Bat':
+          add(Bat(position: pos));
+        case 'Golem':
+          add(Golem(position: pos));
+        case 'Boss':
+          boss = BossGolem(position: pos);
+          add(boss);
+      }
+    }
+    // On boss levels the exit only appears once the boss is beaten.
+    if (end != null) {
+      final exit = end;
+      if (boss != null) {
+        boss.onBossDefeated = () => add(exit);
+      } else {
+        add(exit);
       }
     }
     return fruits;

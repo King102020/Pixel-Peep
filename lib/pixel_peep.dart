@@ -69,6 +69,20 @@ class PixelPeep extends FlameGame
     super.update(dt);
   }
 
+  double _freezeLeft = 0;
+
+  /// Hit-stop: pauses the world for a split second to make impacts land.
+  void freeze(double seconds) => _freezeLeft = seconds;
+
+  @override
+  void updateTree(double dt) {
+    if (_freezeLeft > 0) {
+      _freezeLeft -= dt;
+      return;
+    }
+    super.updateTree(dt);
+  }
+
   /// Brief screen shake for hits and ground pounds.
   void shake({double intensity = 3, double duration = 0.2}) {
     _shakeIntensity = intensity;
