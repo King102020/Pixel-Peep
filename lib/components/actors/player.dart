@@ -1,17 +1,20 @@
 import 'dart:async';
 
+import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:pixel_peep/components/collision_block.dart';
+import 'package:pixel_peep/components/effects/one_shot_effect.dart';
+import 'package:pixel_peep/components/hazards/hazard.dart';
 import 'package:pixel_peep/components/utils.dart';
 import 'package:pixel_peep/pixel_peep.dart';
 import 'package:pixel_peep/services/audio_service.dart';
 
-enum PlayerState { idle, running, jumping, falling }
+enum PlayerState { idle, running, jumping, falling, hit }
 
 class Player extends SpriteAnimationGroupComponent<PlayerState>
-    with HasGameReference<PixelPeep>, KeyboardHandler {
+    with HasGameReference<PixelPeep>, KeyboardHandler, CollisionCallbacks {
   Player({super.position, this.character = 'Ninja Frog'});
 
   String character;
@@ -46,21 +49,36 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
   double _jumpBufferTimer = 0;
   double _accumulator = 0;
 
+  /// Where the player reappears after dying; moved forward by checkpoints.
+  Vector2 respawnPoint = Vector2.zero();
+  bool isDead = false;
+  bool reachedEnd = false;
+
   @override
   FutureOr<void> onLoad() {
     _loadAllAnimations();
-    debugMode = kDebugMode;
+    debugMode = PixelPeep.showHitboxes;
+    add(RectangleHitbox(
+      position: Vector2(hitbox.offsetX, hitbox.offsetY),
+      size: Vector2(hitbox.width, hitbox.height),
+    ));
     return super.onLoad();
   }
 
   @override
   void update(double dt) {
+    if (isDead || reachedEnd) {
+      super.update(dt);
+      return;
+    }
     _accumulator += dt.clamp(0, 0.25);
     while (_accumulator >= fixedDelta) {
       _physicsStep(fixedDelta);
       _accumulator -= fixedDelta;
+      if (isDead || reachedEnd) break;
     }
-    _updatePlayerState();
+    // die() may have switched to the hit animation mid-step; don't overwrite it.
+    if (!isDead && !reachedEnd) _updatePlayerState();
     super.update(dt);
   }
 
@@ -71,6 +89,51 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
     _checkHorizontalCollisions();
     _applyGravity(dt);
     _checkVerticalCollisions();
+    if (position.y > game.level.mapSize.y + 32) die();
+  }
+
+  @override
+  void onCollisionStart(Set<Vector2> intersectionPoints, PositionComponent other) {
+    if (other is Hazard) die();
+    super.onCollisionStart(intersectionPoints, other);
+  }
+
+  void die() {
+    if (isDead || reachedEnd) return;
+    isDead = true;
+    game.session.deaths.value++;
+    AudioService.instance.playSfx(Sfx.hit);
+    velocity.setZero();
+    current = PlayerState.hit;
+    animationTicker?.onComplete = _respawn;
+  }
+
+  void _respawn() {
+    if (scale.x < 0) flipHorizontallyAroundCenter();
+    final center = position + Vector2(16, 16);
+    parent?.add(OneShotEffect.disappear(center: center));
+    position = respawnPoint.clone();
+    opacity = 0;
+    parent?.add(OneShotEffect.appear(
+      center: position + Vector2(16, 16),
+      onDone: () {
+        opacity = 1;
+        isDead = false;
+        _accumulator = 0;
+      },
+    ));
+  }
+
+  void reachEnd() {
+    reachedEnd = true;
+    velocity.setZero();
+    AudioService.instance.playSfx(Sfx.levelComplete);
+    if (scale.x < 0) flipHorizontallyAroundCenter();
+    opacity = 0;
+    parent?.add(OneShotEffect.disappear(
+      center: position + Vector2(16, 16),
+      onDone: game.completeLevel,
+    ));
   }
 
   @override
@@ -187,17 +250,19 @@ class Player extends SpriteAnimationGroupComponent<PlayerState>
       PlayerState.running: _spriteAnimation('Run', 12),
       PlayerState.jumping: _spriteAnimation('Jump', 1),
       PlayerState.falling: _spriteAnimation('Fall', 1),
+      PlayerState.hit: _spriteAnimation('Hit', 7, loop: false),
     };
     current = PlayerState.idle;
   }
 
-  SpriteAnimation _spriteAnimation(String state, int amount) {
+  SpriteAnimation _spriteAnimation(String state, int amount, {bool loop = true}) {
     return SpriteAnimation.fromFrameData(
       game.images.fromCache('Main Characters/$character/$state (32x32).png'),
       SpriteAnimationData.sequenced(
         amount: amount,
         stepTime: stepTime,
         textureSize: Vector2.all(32),
+        loop: loop,
       ),
     );
   }
