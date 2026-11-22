@@ -12,22 +12,27 @@ class Hud extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = game.session;
-    return Stack(
-      children: [
-        _LevelBanner(
-          key: ValueKey(game.levelIndex),
-          title: 'LEVEL ${game.levelIndex + 1}',
-          subtitle: levels[game.levelIndex].name,
-        ),
-        _bar(s),
-      ],
+    // Draw inside the letterboxed 16:9 playfield, not in the black bars.
+    return GameRect(
+      builder: (rect) => Stack(
+        children: [
+          _LevelBanner(
+            key: ValueKey(game.levelIndex),
+            title: 'LEVEL ${game.levelIndex + 1}',
+            subtitle: levels[game.levelIndex].name,
+          ),
+          _DeathQuip(deaths: s.deaths),
+          _bar(s, compact: rect.width < 700),
+        ],
+      ),
     );
   }
 
-  Widget _bar(GameSession s) {
+  Widget _bar(GameSession s, {required bool compact}) {
+    final gap = compact ? 4.0 : 8.0;
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(10),
+        padding: EdgeInsets.all(compact ? 6 : 10),
         child: Align(
           alignment: Alignment.topCenter,
           child: Row(
@@ -44,36 +49,37 @@ class Hud extends StatelessWidget {
                               ? Icons.favorite_rounded
                               : Icons.favorite_border_rounded,
                           color: const Color(0xFFFF5D73),
-                          size: 18,
+                          size: compact ? 14 : 18,
                         ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: gap),
               _Chip(
                 child: ListenableBuilder(
                   listenable: Listenable.merge([s.fruits, s.totalFruits]),
                   builder: (_, __) => Text(
                     '🍎 ${s.fruits.value}/${s.totalFruits.value}',
-                    style: pixelText.copyWith(fontSize: 14),
+                    style: pixelText.copyWith(fontSize: compact ? 12 : 14),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: gap),
               _Chip(
                 child: ValueListenableBuilder(
                   valueListenable: s.elapsed,
                   builder: (_, t, __) => Text(
                     '⏱ ${formatTime(t)}',
                     style: pixelText.copyWith(
-                      fontSize: 14,
+                      fontSize: compact ? 12 : 14,
                       color: t <= s.targetTime ? Palette.text : Palette.muted,
                     ),
                   ),
                 ),
               ),
               const Spacer(),
+              SizedBox(width: gap),
               _Chip(
                 child: Row(
                   children: [
@@ -90,10 +96,14 @@ class Hud extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      game.hero.ability.toUpperCase(),
-                      style: pixelText.copyWith(fontSize: 11, color: game.hero.color),
-                    ),
+                    // Narrow screens: just a star, the ring shows readiness.
+                    compact
+                        ? Icon(Icons.star_rounded, size: 16, color: game.hero.color)
+                        : Text(
+                            game.hero.ability.toUpperCase(),
+                            style: pixelText.copyWith(
+                                fontSize: 11, color: game.hero.color),
+                          ),
                   ],
                 ),
               ),
@@ -175,6 +185,63 @@ class _LevelBannerState extends State<_LevelBanner>
                     style: pixelText.copyWith(fontSize: 34, color: Palette.accent)),
               ],
             ),
+          ),
+        ),
+      );
+}
+
+
+/// One-liner on the first fall of a level: deaths should sting a little and
+/// then be funny, so the retry loop stays light.
+class _DeathQuip extends StatefulWidget {
+  const _DeathQuip({required this.deaths});
+  final ValueNotifier<int> deaths;
+
+  @override
+  State<_DeathQuip> createState() => _DeathQuipState();
+}
+
+class _DeathQuipState extends State<_DeathQuip> {
+  static const _quips = [
+    'The floor was a lie.',
+    'Gravity: 1, You: 0.',
+    'That spike had it coming.',
+    'Bold strategy!',
+    'Practice run. Obviously.',
+    'Nobody saw that. Probably.',
+  ];
+  String? _text;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.deaths.addListener(_onDeath);
+  }
+
+  @override
+  void dispose() {
+    widget.deaths.removeListener(_onDeath);
+    super.dispose();
+  }
+
+  void _onDeath() {
+    if (widget.deaths.value != 1) return;
+    final quip = (_quips.toList()..shuffle()).first;
+    setState(() => _text = quip);
+    Future.delayed(const Duration(milliseconds: 1800), () {
+      if (mounted) setState(() => _text = null);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: Align(
+          alignment: const Alignment(0, -0.45),
+          child: AnimatedOpacity(
+            opacity: _text == null ? 0 : 1,
+            duration: const Duration(milliseconds: 200),
+            child: Text(_text ?? '',
+                style: pixelText.copyWith(fontSize: 18, color: Palette.text)),
           ),
         ),
       );

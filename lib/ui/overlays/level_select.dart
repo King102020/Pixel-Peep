@@ -24,52 +24,72 @@ class LevelSelect extends StatelessWidget {
     for (var i = 0; i < levels.length; i++) {
       worlds.putIfAbsent(levels[i].world, () => []).add(i);
     }
-    return Scrim(
-      opacity: 1,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+    return ColoredBox(
+      color: Palette.background,
+      child: SafeArea(
         child: Column(
           children: [
-            Row(
-              children: [
-                GameButton(
-                  label: 'BACK',
-                  icon: Icons.arrow_back_rounded,
-                  color: Palette.muted,
-                  onPressed: game.showMainMenu,
-                ),
-                const SizedBox(width: 16),
-                Text('CHOOSE A LEVEL', style: pixelText.copyWith(fontSize: 24)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: ListView(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+              child: Row(
                 children: [
-                  for (final entry in worlds.entries) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: Text(
-                        'WORLD ${entry.key} · ${_worldNames[entry.key] ?? ''}',
-                        style: pixelText.copyWith(
-                            fontSize: 14, color: Palette.muted),
+                  GameButton(
+                    label: 'BACK',
+                    icon: Icons.arrow_back_rounded,
+                    color: Palette.muted,
+                    onPressed: game.showMainMenu,
+                  ),
+                  const SizedBox(width: 14),
+                  Flexible(
+                    child: Text('CHOOSE A LEVEL',
+                        overflow: TextOverflow.ellipsis,
+                        style: pixelText.copyWith(fontSize: 22)),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ScrollHint(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 820),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+                      child: Column(
+                        children: [
+                          for (final entry in worlds.entries) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(top: 10, bottom: 6),
+                              child: Text(
+                                'WORLD ${entry.key} · ${_worldNames[entry.key] ?? ''}',
+                                style: pixelText.copyWith(
+                                    fontSize: 14, color: Palette.muted),
+                              ),
+                            ),
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 10,
+                              runSpacing: 10,
+                              children: [
+                                for (final i in entry.value)
+                                  _LevelTile(
+                                    index: i,
+                                    locked: i >= unlocked,
+                                    stars: game.save.starsFor(i),
+                                    onTap: () => game.showCharacterSelect(i),
+                                  ),
+                              ],
+                            ),
+                          ],
+                          const SizedBox(height: 8),
+                          Text('${levels.length} levels · scroll for more',
+                              style: pixelText.copyWith(
+                                  fontSize: 11, color: Palette.muted)),
+                        ],
                       ),
                     ),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        for (final i in entry.value)
-                          _LevelTile(
-                            index: i,
-                            locked: i >= unlocked,
-                            stars: game.save.starsFor(i),
-                            onTap: () => game.showCharacterSelect(i),
-                          ),
-                      ],
-                    ),
-                  ],
-                ],
+                  ),
+                ),
               ),
             ),
           ],
@@ -105,7 +125,7 @@ class _LevelTile extends StatelessWidget {
       child: Opacity(
         opacity: locked ? 0.45 : 1,
         child: Container(
-          width: 120,
+          width: 108,
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: Palette.panel,

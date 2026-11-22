@@ -18,6 +18,7 @@ class LevelComplete extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(last ? 'YOU BEAT PIXEL PEEP!' : 'LEVEL CLEAR!',
+                textAlign: TextAlign.center,
                 style: pixelText.copyWith(fontSize: 26, color: Palette.accent)),
             const SizedBox(height: 10),
             // Stars pop in one after another.
@@ -32,9 +33,14 @@ class LevelComplete extends StatelessWidget {
             _line('Time', '${formatTime(s.elapsed.value)}  (goal ${formatTime(s.targetTime)})',
                 s.elapsed.value <= s.targetTime),
             _line('Falls', '${s.deaths.value}', s.deaths.value == 0),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisSize: MainAxisSize.min,
+            const SizedBox(height: 8),
+            _Split(game: game),
+            const SizedBox(height: 14),
+            // Wraps onto two rows on narrow phones instead of overflowing.
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 10,
+              runSpacing: 10,
               children: [
                 GameButton(
                   label: 'MENU',
@@ -42,21 +48,18 @@ class LevelComplete extends StatelessWidget {
                   color: Palette.muted,
                   onPressed: game.quitToMenu,
                 ),
-                const SizedBox(width: 10),
                 GameButton(
                   label: 'REPLAY',
                   icon: Icons.replay_rounded,
                   color: Palette.muted,
                   onPressed: () => game.showCharacterSelect(game.levelIndex),
                 ),
-                if (!last) ...[
-                  const SizedBox(width: 10),
+                if (!last)
                   GameButton(
                     label: 'NEXT',
                     icon: Icons.arrow_forward_rounded,
                     onPressed: game.playNextLevel,
                   ),
-                ],
               ],
             ),
           ],
@@ -81,4 +84,33 @@ class LevelComplete extends StatelessWidget {
           ],
         ),
       );
+}
+
+
+/// "One more try" hook: how this run compares to your best.
+class _Split extends StatelessWidget {
+  const _Split({required this.game});
+  final PixelPeep game;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = game.session;
+    final previous = game.previousBest;
+    final missed = s.totalFruits.value - s.fruits.value;
+    final parts = <String>[];
+    if (previous == null) {
+      parts.add('First clear!');
+    } else {
+      final diff = s.elapsed.value - previous;
+      parts.add(diff < 0
+          ? 'New best! ${(-diff).toStringAsFixed(1)}s faster'
+          : '+${diff.toStringAsFixed(1)}s vs your best');
+    }
+    if (missed > 0) parts.add('missed $missed fruit');
+    return Text(
+      parts.join('  ·  '),
+      textAlign: TextAlign.center,
+      style: pixelText.copyWith(fontSize: 13, color: Palette.accent),
+    );
+  }
 }
