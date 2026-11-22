@@ -232,7 +232,7 @@ class Golem extends Enemy {
 /// while it's dizzy after a charge, so every hero can win.
 class BossGolem extends Golem {
   BossGolem({super.position})
-      : super(size: Vector2.all(64), maxHp: 8);
+      : super(size: Vector2.all(48), maxHp: 6);
 
   /// Called when the boss falls; the level then reveals the exit.
   void Function()? onBossDefeated;
@@ -240,8 +240,9 @@ class BossGolem extends Golem {
   double _chargeTimer = 2;
   double _dizzy = 0;
   bool _charging = false;
-  late final double _arenaMin = position.x - 10 * 16;
-  late final double _arenaMax = position.x + 6 * 16;
+  // Charges across the whole room, stopping short of the walls.
+  double get _arenaMin => 2 * 16;
+  double get _arenaMax => game.level.mapSize.x - 2 * 16 - width;
 
   bool get isDizzy => _dizzy > 0;
 
