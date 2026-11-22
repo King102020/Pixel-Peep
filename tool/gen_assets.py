@@ -207,7 +207,34 @@ def make_music():
     write_wav(MUSIC / "level_loop.wav", loop(lvl_mel, lvl_bass, 140))
 
 
+# --------------------------------------------------------------------------- palette swap
+
+def make_blue_ninja():
+    """Blue Ninja reuses the Ninja Frog sheets with greens shifted to blue."""
+    import colorsys
+    src = ROOT / "assets" / "images" / "Main Characters" / "Ninja Frog"
+    out = ROOT / "assets" / "images" / "Main Characters" / "Blue Ninja"
+    out.mkdir(parents=True, exist_ok=True)
+    for sheet in src.glob("*.png"):
+        img = Image.open(sheet).convert("RGBA")
+        px = img.load()
+        for y in range(img.height):
+            for x in range(img.width):
+                r, g, b, a = px[x, y]
+                if a == 0:
+                    continue
+                h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+                # Greens and yellow-greens (the frog's skin) become blues;
+                # the red headband, eyes and outline are left alone.
+                if 0.12 < h < 0.45 and s > 0.25:
+                    h = 0.58 + (h - 0.28) * 0.5
+                    nr, ng, nb = colorsys.hsv_to_rgb(h, s, v)
+                    px[x, y] = (int(nr * 255), int(ng * 255), int(nb * 255), a)
+        img.save(out / sheet.name)
+
+
 if __name__ == "__main__":
+    make_blue_ninja()
     make_sprites()
     make_sfx()
     make_music()

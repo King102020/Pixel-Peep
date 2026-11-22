@@ -66,11 +66,11 @@ enum HeroId {
   ),
   blueNinja(
     displayName: 'Blue Ninja',
-    sprite: 'Ninja Frog',
+    sprite: 'Blue Ninja',
     role: 'Acrobat',
     ability: 'Wall Jump & Shadow Phase',
     description: 'Slides and jumps off walls. Phase through traps for a moment.',
-    color: Color(0xFF6CE0A0),
+    color: Color(0xFF3D7BFF),
     stats: CharacterStats(
       moveSpeed: 110,
       jumpForce: 360,
